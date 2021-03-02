@@ -1,0 +1,6 @@
+module Native {
+	module jni {
+		header "/data/user/0/org.m.code/files/usr/include/jni.h"
+		export *
+	}
+}
