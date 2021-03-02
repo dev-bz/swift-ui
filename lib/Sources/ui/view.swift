@@ -129,7 +129,6 @@ public struct Context {
 }
 public protocol View {
   var obj: Object? { get }
-  /*static var type: String { get }*/
 }
 protocol Group: View {
   func addView(child: View, w: jint, h: jint)
@@ -174,6 +173,28 @@ public struct ScrollView: Group {
     return self
   }
 }
+public struct Gravity {
+  public static let BOTTOM = 80
+  public static let CENTER = 17
+  public static let CENTER_HORIZONTAL = 1
+  public static let CENTER_VERTICAL = 16
+  public static let CLIP_HORIZONTAL = 8
+  public static let CLIP_VERTICAL = 128
+  public static let DISPLAY_CLIP_HORIZONTAL = 16_777_216
+  public static let DISPLAY_CLIP_VERTICAL = 268_435_456
+  public static let END = 8_388_613
+  public static let FILL = 119
+  public static let FILL_HORIZONTAL = 7
+  public static let FILL_VERTICAL = 112
+  public static let HORIZONTAL_GRAVITY_MASK = 7
+  public static let LEFT = 3
+  public static let NO_GRAVITY = 0
+  public static let RELATIVE_HORIZONTAL_GRAVITY_MASK = 8_388_615
+  public static let RELATIVE_LAYOUT_DIRECTION = 8_388_608
+  public static let RIGHT = 5
+  public static let START = 8_388_611
+  public static let TOP = 48
+}
 public struct LinearLayout: Group {
   public enum Orientation {
     case HORIZONTAL
@@ -182,15 +203,15 @@ public struct LinearLayout: Group {
   static var type = "android/widget/LinearLayout"
   var cls: jclass?
   public let obj: Object?
-  var orientation: Orientation? = .VERTICAL
+  var orientation: Orientation = .VERTICAL
   public init(@Builder<View> children: () -> [View]) {
-    self.init(ori: .VERTICAL, children: children)
+    self.init(orientation: .VERTICAL, children: children)
   }
-  public init(ori: Orientation, @Builder<View> children: () -> [View]) {
-    self.orientation = ori
+  public init(orientation: Orientation, @Builder<View> children: () -> [View]) {
+    self.orientation = orientation
     cls = Self.env().find(type: Self.type)
     obj = Self.env().new(type: cls!, ctx: Self.ctx())
-    let _ = with(orientation: orientation!)
+    let _ = with(orientation: self.orientation)
     for view in children() {
       if orientation == .VERTICAL {
         addView(child: view, w: -1)
@@ -213,6 +234,11 @@ extension LinearLayout {
   public func with(orientation: Orientation) -> Self {
     var val = jvalue(i: (orientation == .VERTICAL) ? 1 : 0)
     Self.env().call(obj!, cls!, name: "setOrientation", type: "(I)V", args: &val)
+    return self
+  }
+  public func with(gravity: Int) -> Self {
+    var val = jvalue(i: jint(gravity))
+    Self.env().call(obj!, cls!, name: "setGravity", type: "(I)V", args: &val)
     return self
   }
 }

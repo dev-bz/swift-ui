@@ -4,10 +4,10 @@ struct ContextView: View {
   var obj: Object? { body.obj }
   private var body: some View {
     LinearLayout {
-      LinearLayout(ori: .HORIZONTAL) {
+      LinearLayout(orientation: .HORIZONTAL) {
         Button("Make")
         Button("by swift 5.3.3")
-      }  //.with(orientation: .HORIZONTAL)
+      }.with(gravity: Gravity.CENTER_HORIZONTAL)  //.with(orientation: .HORIZONTAL)
       Button("Here a button")
       Button("Here a button too")
       List {
