@@ -16,18 +16,19 @@ let package = Package(
     // Targets can depend on other targets in this package, and on products in packages this package depends on.
     //.target(name: "sf", dependencies: [.product(name: "show", package: "libs"), .product(name: "dep", package: "libs")]),
     //.target(name: "cc", dependencies: [.product(name: "show", package: "libs"), .product(name: "dep", package: "libs")]),
-    .target(name: "main"),
+    .target(name: "main", dependencies: [.product(name: "utils", package: "libs")]),
     .target(
       name: "sample",
       dependencies: [
         .product(name: "SwiftUI", package: "libs")
         //  .product(name: "swift", package: "libs"),
         // .product(name: "show", package: "libs"),
-      ], swiftSettings: [.unsafeFlags(["-I", "\(String(cString: getenv("TMPDIR")))/s.build/release"])]
+      ]
     ),
     //.testTarget(name: "swTests", dependencies: ["sw"]),
   ]
 )
+for t in package.targets { t.swiftSettings = [.unsafeFlags(["-I", "\(String(cString: getenv("TMPDIR")))/s.build/release"])] }
 print(CommandLine.arguments)
 //let encoder = JSONEncoder()
 //print(String(data: try! encoder.encode(package), encoding: .utf8)!)

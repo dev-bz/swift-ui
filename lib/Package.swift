@@ -7,7 +7,8 @@ let package = Package(
   name: "libs",
   products: [
     // Products define the executables and libraries a package produces, and make them visible to other packages.
-    .library(name: "SwiftUI", targets: ["ui"])
+    .library(name: "SwiftUI", targets: ["ui"]),
+    .library(name: "utils", targets: ["common"])
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -18,6 +19,7 @@ let package = Package(
     // Targets can depend on other targets in this package, and on products in packages this package depends on.
     .target(name: "ui", dependencies: ["jni"]),
     .target(name: "jni", dependencies: []),
+    .target(name: "common")
     //.testTarget(name: "depTests", dependencies: ["dep"]),
   ]
 )

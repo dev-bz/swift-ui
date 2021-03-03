@@ -6,18 +6,98 @@
 public typealias _JNIEnv = UnsafeMutablePointer<JNIEnv?>
 public typealias Object = jobject
 public typealias Class = jclass
-@_functionBuilder public struct Builder<T> {
+
+#if false
+
+  public struct TContextView: View {
+    public init(on: Bool) { self.on = on }
+    @State var on: Bool = true
+    let data = ["a", "b", "c", "d", "e", "f", "g"]
+    public var obj: Object? { body.obj }
+    private var body: some View {
+      LinearLayout {
+        LinearLayout(orientation: .HORIZONTAL) {
+          Button("Make")
+          Button("by swift 5.3.3")
+        }.with(gravity: Gravity.CENTER_HORIZONTAL)  //.with(orientation: .HORIZONTAL)
+        Button("Here a button")
+        Button("Here a button too")
+        List {
+          "Hello"
+          "World"
+        }
+        List(0...6) { id in
+          "Item \(id)"
+        }.with(weight: 1.0)
+        do {
+          TextView("Do control")
+          TextView("Do test work")
+        }
+        if on {
+          TextView("Test IF").with(gravity: Gravity.CENTER_HORIZONTAL)
+          TextView("Next IF").with(gravity: Gravity.CENTER_HORIZONTAL)
+        }
+        List(data) { id in
+          "\(id) is String"
+        }.with(weight: 0.75)
+        if on {
+          TextView("USE IF TRUE")
+          TextView("USE IF TRUE")
+        } else {
+          TextView("USE ELSE IF")
+          TextView("USE ELSE IF")
+        }
+        ScrollView {
+          TextView(Self.debug())
+        }.with(fillViewport: true)
+      }  //.with(orientation: .VERTICAL)
+    }
+  }
+
+#endif
+struct Switch: View {
+  var obj: Object?
+  let objs: [View]
+  init(_ objs: [View]) {
+    self.objs = objs
+  }
+}
+@_functionBuilder public struct ListBuilder<T> {
   public static func buildBlock(_ content: T...) -> [T] {
     return content
   }
-  /*static func buildEither<TrueContent, FalseContent>(first: TrueContent) -> ConditionalContent<TrueContent, FalseContent>{
-	return ConditionalContent<TrueContent, FalseContent>(first)
-	}
-	static func buildEither<TrueContent, FalseContent>(second: FalseContent) -> ConditionalContent<TrueContent, FalseContent>{
-	return ConditionalContent<TrueContent, FalseContent>(second)
-	}*/
+  public static func buildBlock(_ content: T) -> T {
+    return content
+  }
 }
-
+@_functionBuilder public struct Builder {
+  public static func buildBlock(_ content: View...) -> [View] {
+    return content
+  }
+  public static func buildDo(_ content: [View]) -> View {
+    return Switch(content)
+  }
+  static public func buildEither(first: [View]) -> View {
+    return Switch(first)
+  }
+  static public func buildEither(second: [View]) -> View {
+    return Switch(second)
+  }
+  static public func buildIf(_ content: [View]?) -> View {
+    return Switch(content ?? [])
+  }
+}
+@propertyWrapper public struct State<Tp> {
+  var value: Tp
+  public var wrappedValue: Tp {
+    get { value }
+    set {
+      value = newValue
+      print("must update UI")
+    }
+  }
+  public init(wrappedValue initialValue: Tp) { self.value = initialValue }
+}
 extension _JNIEnv {
   func list(type: String, name: String) -> String {
     var out: String = type
@@ -96,6 +176,20 @@ extension _JNIEnv {
     }
     return -1
   }
+  func valueFloat(_ obj: Object, _ cls: Class, _ name: String, _ args: jvalue) {
+    if let env = pointee?.pointee {
+      if let f = env.GetFieldID(self, cls, name, "F") {
+        env.SetFloatField(self, obj, f, args.f)
+      }
+    }
+  }
+  func valueInt(_ obj: Object, _ cls: Class, _ name: String, _ args: jvalue) {
+    if let env = pointee?.pointee {
+      if let f = env.GetFieldID(self, cls, name, "I") {
+        env.SetIntField(self, obj, f, args.i)
+      }
+    }
+  }
   func new(text: String) -> jvalue {
     return jvalue(l: pointee?.pointee.NewStringUTF(self, text))
   }
@@ -130,18 +224,28 @@ public struct Context {
 public protocol View {
   var obj: Object? { get }
 }
-protocol Group: View {
+public protocol Graviting: View {
+  var cls: Class? { get }
+}
+public protocol Group: Graviting {
   func addView(child: View, w: jint, h: jint)
-  var cls: jclass? { get }
   init(children: () -> [View])
+}
+public struct Weight: View {
+  public var obj: Object? {
+    view.obj
+  }
+  public var weight: Float
+  public var view: View
 }
 public struct List: View {
   public var obj: Object?
-  public init(@Builder<String> children: () -> [String]) {
-    let cls = Self.env().find(type: "android/widget/ListView")
+  public var weight: jvalue = jvalue(f: 0)
+  public init(@ListBuilder<String> children: () -> [String]) {
+    let cls = Self.env().find(type: "android/widget/ListView")!
     let layout = Self.env().find(type: "android/R$layout")
     let id = Self.env().find(type: "android/R$id")
-    obj = Self.env().new(type: cls!, ctx: Self.ctx())
+    obj = Self.env().new(type: cls, ctx: Self.ctx())
     if let cls_ = Self.env().find(type: "android/widget/ArrayAdapter") {
       let ids: [jvalue] = [jvalue(l: Self.ctx()), jvalue(i: Self.env().getValue(cls: layout!, name: "simple_list_item_1")), jvalue(i: Self.env().getValue(cls: id!, name: "text1"))]
       if let adapter = Self.env().new(type: cls_, arg: "II", args: ids) {
@@ -150,16 +254,72 @@ public struct List: View {
           Self.env().call(adapter, cls_, name: "add", type: "(Ljava/lang/Object;)V", args: &args)
         }
         var args = jvalue(l: adapter)
-        Self.env().call(obj!, cls!, name: "setAdapter", type: "(Landroid/widget/Adapter;)V", args: &args)
+        Self.env().call(obj!, cls, name: "setAdapter", type: "(Landroid/widget/Adapter;)V", args: &args)
+      }
+    }
+  }
+  public init<T>(_ range: [T], @ListBuilder<String> s: (T) -> String) {
+    let cls = Self.env().find(type: "android/widget/ListView")!
+    let layout = Self.env().find(type: "android/R$layout")
+    let id = Self.env().find(type: "android/R$id")
+    obj = Self.env().new(type: cls, ctx: Self.ctx())
+    if let cls_ = Self.env().find(type: "android/widget/ArrayAdapter") {
+      let ids: [jvalue] = [jvalue(l: Self.ctx()), jvalue(i: Self.env().getValue(cls: layout!, name: "simple_list_item_1")), jvalue(i: Self.env().getValue(cls: id!, name: "text1"))]
+      if let adapter = Self.env().new(type: cls_, arg: "II", args: ids) {
+        for id in range {
+          var args = Self.env().new(text: s(id))
+          Self.env().call(adapter, cls_, name: "add", type: "(Ljava/lang/Object;)V", args: &args)
+        }
+        var args = jvalue(l: adapter)
+        Self.env().call(obj!, cls, name: "setAdapter", type: "(Landroid/widget/Adapter;)V", args: &args)
+      }
+    }
+  }
+  public init(_ range: ClosedRange<Int>, @ListBuilder<String> s: (Int) -> String) {
+    let cls = Self.env().find(type: "android/widget/ListView")!
+    let layout = Self.env().find(type: "android/R$layout")
+    let id = Self.env().find(type: "android/R$id")
+    obj = Self.env().new(type: cls, ctx: Self.ctx())
+    if let cls_ = Self.env().find(type: "android/widget/ArrayAdapter") {
+      let ids: [jvalue] = [jvalue(l: Self.ctx()), jvalue(i: Self.env().getValue(cls: layout!, name: "simple_list_item_1")), jvalue(i: Self.env().getValue(cls: id!, name: "text1"))]
+      if let adapter = Self.env().new(type: cls_, arg: "II", args: ids) {
+        for id in range {
+          var args = Self.env().new(text: s(id))
+          Self.env().call(adapter, cls_, name: "add", type: "(Ljava/lang/Object;)V", args: &args)
+        }
+        var args = jvalue(l: adapter)
+        Self.env().call(obj!, cls, name: "setAdapter", type: "(Landroid/widget/Adapter;)V", args: &args)
+      }
+    }
+  }
+  public init(@ListBuilder<(String, String)> children: () -> [(String, String)]) {
+    let cls = Self.env().find(type: "android/widget/ListView")!
+    let layout = Self.env().find(type: "android/R$layout")
+    let id = Self.env().find(type: "android/R$id")
+    obj = Self.env().new(type: cls, ctx: Self.ctx())
+    if let cls_ = Self.env().find(type: "android/widget/ArrayAdapter") {
+      let ids: [jvalue] = [jvalue(l: Self.ctx()), jvalue(i: Self.env().getValue(cls: layout!, name: "simple_list_item_1")), jvalue(i: Self.env().getValue(cls: id!, name: "text1"))]
+      if let adapter = Self.env().new(type: cls_, arg: "II", args: ids) {
+        for s in children() {
+          var args = Self.env().new(text: s.0 + " , " + s.1)
+          Self.env().call(adapter, cls_, name: "add", type: "(Ljava/lang/Object;)V", args: &args)
+        }
+        var args = jvalue(l: adapter)
+        Self.env().call(obj!, cls, name: "setAdapter", type: "(Landroid/widget/Adapter;)V", args: &args)
       }
     }
   }
 }
+extension List {
+  public func with(weight: Float) -> Weight {
+    Weight(weight: weight, view: self)
+  }
+}
 public struct ScrollView: Group {
   static let type: String = "android/widget/ScrollView"
-  var cls: jclass?
+  public var cls: Class?
   public let obj: Object?
-  public init(@Builder<View> children: () -> [View]) {
+  public init(@Builder children: () -> [View]) {
     cls = Self.env().find(type: Self.type)
     obj = Self.env().new(type: cls!, ctx: Self.ctx())
     for view in children() {
@@ -201,13 +361,13 @@ public struct LinearLayout: Group {
     case VERTICAL
   }
   static var type = "android/widget/LinearLayout"
-  var cls: jclass?
+  public var cls: jclass?
   public let obj: Object?
   var orientation: Orientation = .VERTICAL
-  public init(@Builder<View> children: () -> [View]) {
+  public init(@Builder children: () -> [View]) {
     self.init(orientation: .VERTICAL, children: children)
   }
-  public init(orientation: Orientation, @Builder<View> children: () -> [View]) {
+  public init(orientation: Orientation, @Builder children: () -> [View]) {
     self.orientation = orientation
     cls = Self.env().find(type: Self.type)
     obj = Self.env().new(type: cls!, ctx: Self.ctx())
@@ -218,13 +378,28 @@ public struct LinearLayout: Group {
       } else {
         addView(child: view)
       }
+      if let lst = view as? Weight, lst.weight > 0 {
+        if let vc = Self.env().find(type: "android/view/View") {
+          if let lpc = Self.env().find(type: "\(Self.type)$LayoutParams") {
+            var args = jvalue()
+            if let lp = Self.env().call(view.obj!, vc, name: "getLayoutParams", object: "()Landroid/view/ViewGroup$LayoutParams;", args: &args) {
+              Self.env().valueFloat(lp, lpc, "weight", jvalue(f: lst.weight))
+              Self.env().valueInt(lp, lpc, "height", jvalue(i: 0))
+            }
+          }
+        }
+      }
     }
   }
 }
 extension Group {
-  func addView(child: View, w: jint = -2, h: jint = -2) {
+  public func addView(child: View, w: jint = -2, h: jint = -2) {
     if let obj = obj {
-      if let args = [jvalue(l: child.obj), jvalue(i: w), jvalue(i: h)].withUnsafeBufferPointer({ o in return o.baseAddress }) {
+      if child is Switch {
+        for c in (child as! Switch).objs {
+          addView(child: c, w: w, h: h)
+        }
+      } else if let args = [jvalue(l: child.obj), jvalue(i: w), jvalue(i: h)].withUnsafeBufferPointer({ o in return o.baseAddress }) {
         Self.env().call(obj, cls!, name: "addView", type: "(Landroid/view/View;II)V", args: args)
       }
     }
@@ -236,15 +411,17 @@ extension LinearLayout {
     Self.env().call(obj!, cls!, name: "setOrientation", type: "(I)V", args: &val)
     return self
   }
+}
+extension Graviting {
   public func with(gravity: Int) -> Self {
     var val = jvalue(i: jint(gravity))
     Self.env().call(obj!, cls!, name: "setGravity", type: "(I)V", args: &val)
     return self
   }
 }
-public struct TextView: View {
+public struct TextView: View, Graviting {
   static var type: String = "android/widget/TextView"
-  var cls: jclass?
+  public var cls: jclass?
   public let obj: Object?
   public init(_ text: String, type: String) {
     cls = Self.env().find(type: type)
@@ -265,10 +442,9 @@ extension TextView {
     return self
   }
 }
-public struct Button: View {
-  public var obj: Object? {
-    t.obj
-  }
+public struct Button: View, Graviting {
+  public var obj: Object? { t.obj }
+  public var cls: Class? { t.cls }
   static var type: String = "android/widget/Button"
   let t: TextView
   public init(_ text: String) {
