@@ -310,7 +310,7 @@ public struct List: View {
     }
   }
 }
-extension List {
+extension View {
   public func with(weight: Float) -> Weight {
     Weight(weight: weight, view: self)
   }
@@ -419,7 +419,10 @@ extension Graviting {
     return self
   }
 }
-public struct TextView: View, Graviting {
+public protocol Text {
+  func setText(text: String)
+}
+public struct TextView: View, Text, Graviting {
   static var type: String = "android/widget/TextView"
   public var cls: jclass?
   public let obj: Object?
@@ -436,13 +439,7 @@ public struct TextView: View, Graviting {
     Self.env().call(obj!, cls!, name: "setText", type: "(Ljava/lang/CharSequence;)V", args: &s)
   }
 }
-extension TextView {
-  public func with(text: String) -> Self {
-    setText(text: text)
-    return self
-  }
-}
-public struct Button: View, Graviting {
+public struct Button: View, Text, Graviting {
   public var obj: Object? { t.obj }
   public var cls: Class? { t.cls }
   static var type: String = "android/widget/Button"
@@ -454,9 +451,26 @@ public struct Button: View, Graviting {
     t.setText(text: text)
   }
 }
-extension Button {
+public struct EditText: View, Text, Graviting {
+  static var type: String = "android/widget/EditText"
+  public var cls: jclass?
+  public let obj: Object?
+  public init(_ text: String, type: String) {
+    cls = Self.env().find(type: type)
+    obj = Self.env().new(type: cls!, ctx: Self.ctx())
+    setText(text: text)
+  }
+  public init(_ text: String) {
+    self.init(text, type: Self.type)
+  }
+  public func setText(text: String) {
+    var s = Self.env().new(text: text)  // \(#function):\(#dsohandle), \(#file):\(#fileID) > \(#filePath)")
+    Self.env().call(obj!, cls!, name: "setText", type: "(Ljava/lang/CharSequence;)V", args: &s)
+  }
+}
+extension Text {
   public func with(text: String) -> Self {
-    t.setText(text: text)
+    setText(text: text)
     return self
   }
 }

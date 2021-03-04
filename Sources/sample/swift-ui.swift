@@ -31,7 +31,7 @@ struct TContextView:View {
           Button("Make")
           Button("by swift 5.3.3")
         }.with(gravity: Gravity.CENTER_HORIZONTAL)  //.with(orientation: .HORIZONTAL)
-        Button("Here a button")
+        Button("Here a button").with(text: "New Text")
         Button("Here a button too")
         List {
           "Hello"
@@ -41,7 +41,7 @@ struct TContextView:View {
           "Item \(id)"
         }.with(weight: 1.0)
         do {
-          TextView("Do block")
+          EditText("Do block")
           TextView("Do block test")
         }
         if on {
@@ -60,7 +60,7 @@ struct TContextView:View {
         }
         ScrollView {
           TextView(Self.debug())
-        }.with(fillViewport: true)
+        }.with(fillViewport: true).with(weight: 0.8)
       }  //.with(orientation: .VERTICAL)
     }
   }
