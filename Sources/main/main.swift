@@ -96,8 +96,8 @@ struct Build: CustomStringConvertible {
     return body.description
   }
 }
-print("list", Build(status: true))
-print("list", Build(status: false))
+// print("list", Build(status: true))
+// print("list", Build(status: false))
 var a = 20
 var b = 10
 do {
